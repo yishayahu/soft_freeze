@@ -78,7 +78,7 @@ class Trainer(object):
             )
             self.trained_encoder.to(self.device)
         weights = cfg.WEIGHTS
-        self.criterion = nn.CrossEntropyLoss(weight=torch.tensor(weights))
+        self.criterion = nn.CrossEntropyLoss(weight=torch.tensor(weights,device=self.device))
 
         if cfg.SOFT_FREEZE:
             cfg.LR *= 100
@@ -155,7 +155,7 @@ class Trainer(object):
 
             accs.append(torch.sum(preds == labels.data).item() / batch_size)
 
-            if i % 100 == 0 or i == len(dl) -1:
+            if i % 10 == 0 or i == len(dl) -1:
                 bar.set_description(f'{train_or_val} loss: {np.mean(losses)} {train_or_val} accuracy: {np.mean(accs)} iter: {i}')
                 logs = {
                     f'{train_or_val} loss': float(np.mean(losses)),
