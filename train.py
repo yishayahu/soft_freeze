@@ -1,3 +1,5 @@
+import shutil
+
 import torch.backends.cudnn as cudnn
 import torch
 import os
@@ -28,6 +30,7 @@ class Trainer(object):
         self.images_dir = cfg.IMAGES_DIR
         self.device = device
         self.ckpt_dir = os.path.join(self.cfg.RES_DIR,exp_name)
+        shutil.copyfile('config.yml',os.path.join(self.ckpt_dir,'config.yml'))
 
         wandb.init(
             project="ct",
