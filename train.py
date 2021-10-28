@@ -81,7 +81,7 @@ class Trainer(object):
         self.criterion = nn.CrossEntropyLoss(weight=torch.tensor(weights,device=self.device))
 
         if cfg.SOFT_FREEZE:
-            cfg.LR *= 100
+            cfg.LR *= 10
             base_blk = []
             blk1 = []
             blk2 = []
