@@ -140,7 +140,7 @@ class CombinedModel(ClassificationModel):
         self.classification_head = ClassificationHead(num_ftrs=1024*6*6,
                                                       out_channels=classes)
 
-        if cfg.layer_wise:
+        if cfg.LAYER_WISE:
             self.blocks = []
             for (name,p1),(name2,p2) in zip(self.encoder_base.named_parameters(),self.encoder.named_parameters()):
                 self.blocks.append([(name,p1,p2)])
@@ -184,7 +184,7 @@ class CombinedModel(ClassificationModel):
         output = self.classification_head(*features)
         return output
     def parameters_to_grad(self):
-        return [{'params':list((self.encoder.parameters())),'lr':self.settings.initial_learning_rate},{'params':self.middle_layer,'lr':self.settings.lr_for_middle_layer}]
+        return [{'params':list((self.encoder.parameters())),'lr':self.cfg.LR},{'params':self.middle_layer,'lr':self.cfg.LR_FOR_MIDDLE_LAYER}]
 
 
 def store_model_activations(store_list):
@@ -272,7 +272,7 @@ class CombinedActivations(ClassificationModel):
         output = self.classification_head(*features)
         return output
     def parameters_to_grad(self):
-        return [{'params':list((self.encoder.parameters())),'lr':self.settings.initial_learning_rate},{'params':self.middle_layer,'lr':self.settings.lr_for_middle_layer}]
+        return [{'params':list((self.encoder.parameters())),'lr':self.cfg.LR},{'params':self.middle_layer,'lr':self.cfg.LR_FOR_MIDDLE_LAYER}]
 
 
 

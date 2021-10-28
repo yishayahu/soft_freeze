@@ -11,7 +11,7 @@ from tqdm import tqdm
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
 
-from models import classification_model, CombinedActivations
+from models import classification_model, CombinedActivations, get_encoder,CombinedModel
 from losses import regularized_loss, fine_regularized_loss
 
 
@@ -53,6 +53,14 @@ class Trainer(object):
                 in_channels=cfg.N_CHANNELS,
                 classes=cfg.NUM_CLASSES,cfg=cfg
             )
+        elif cfg.AVG_PARAMS:
+            self.net = CombinedModel(
+                encoder_name=cfg.ENCODER_NAME,
+                encoder_depth=cfg.ENCODER_DEPTH,
+                encoder_weights=cfg.ENCODER_WEIGHTS,
+                in_channels=cfg.N_CHANNELS,
+                classes=cfg.NUM_CLASSES,cfg=cfg
+            )
         else:
             self.net = classification_model(
                 encoder_name=cfg.ENCODER_NAME,
@@ -64,13 +72,7 @@ class Trainer(object):
         self.net.to(self.device)
         self.trained_encoder = None
         if cfg.USE_REGULARIZED_LOSS:
-            self.trained_encoder = classification_model(
-                encoder_name=cfg.ENCODER_NAME,
-                encoder_depth=cfg.ENCODER_DEPTH,
-                encoder_weights=cfg.ENCODER_WEIGHTS,
-                in_channels=cfg.N_CHANNELS,
-                classes=cfg.NUM_CLASSES,
-            ).get_encoder(
+            self.trained_encoder = get_encoder(
                 name=cfg.ENCODER_NAME,
                 in_channels=cfg.N_CHANNELS,
                 depth=cfg.ENCODER_DEPTH,
