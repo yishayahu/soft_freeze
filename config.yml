@@ -1,4 +1,4 @@
-IMAGES_DIR: '/home/dsi/shaya/ct_data/chest_xray/'
+IMAGES_DIR: '/home/dsi/shaya/ct_data/OCT2017/'
 RES_DIR: '/home/dsi/shaya/ct_data/res/'
 
 BATCH_SIZE: 64
@@ -7,9 +7,9 @@ ENCODER_NAME: "densenet121"
 ENCODER_DEPTH: 5
 ENCODER_WEIGHTS: "/home/dsi/shaya/exp/medical.pt"
 N_CHANNELS: 3
-NUM_CLASSES: 2
+NUM_CLASSES: 4
 NUM_EPOCHS: 20
-WEIGHTS: [1.939, 0.673]
+WEIGHTS: [0.56, 1.84, 2.42, 0.79]
 LR: 0.001
 LR_DECAY_STEP_SIZE: 17
 GAMMA_DECAY: 0.6
