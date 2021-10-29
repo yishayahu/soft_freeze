@@ -59,7 +59,7 @@ class Trainer(object):
                 encoder_depth=cfg.ENCODER_DEPTH,
                 encoder_weights=cfg.ENCODER_WEIGHTS,
                 in_channels=cfg.N_CHANNELS,
-                classes=cfg.NUM_CLASSES,cfg=cfg
+                classes=cfg.NUM_CLASSES,cfg=cfg,device=self.device
             )
         else:
             self.net = classification_model(
