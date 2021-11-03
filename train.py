@@ -144,12 +144,14 @@ class Trainer(object):
 
             with torch.set_grad_enabled(train_or_val == 'train'):
                 outputs = self.net(inputs)
+
                 if train_or_val != 'train':
                     all_outputs = torch.cat((all_outputs, outputs), 0)
                     all_labels = torch.cat((all_labels, labels), 0)
                 _, preds = torch.max(outputs, 1)
 
                 loss = self.criterion(outputs, labels)
+                outputs = nn.Sigmoid()(outputs)
                 if self.cfg.USE_REGULARIZED_LOSS:
                     if self.cfg.FINE_REGULARIZED_LOSS:
                         loss = fine_regularized_loss(self.net.encoder, self.trained_encoder, loss)
