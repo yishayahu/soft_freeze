@@ -82,7 +82,7 @@ class classification_model(ClassificationModel):
 
     def forward(self, x):
         features = self.encoder(x)
-        output = self.classification_head(features[-1])
+        output = self.classification_head(features)
         return output
 
 
@@ -149,7 +149,7 @@ class CombinedModel(ClassificationModel):
             p.requires_grad = False
             p.copy_(new_state_dict[name])
         features = empty_encoder(x)
-        output = self.classification_head(features[-1])
+        output = self.classification_head(features)
         return output
     def parameters_to_grad(self):
         return [{'params':list((self.encoder.parameters()))+ list(self.classification_head.parameters()),'lr':self.cfg.LR},{'params':self.middle_layer,'lr':self.cfg.LR_FOR_MIDDLE_LAYER}]
