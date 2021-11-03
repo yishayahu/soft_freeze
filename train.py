@@ -8,10 +8,10 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import wandb
 from tqdm import tqdm
-from torchvision.datasets import ImageFolder
-from torchvision import transforms
+from CheXpert.dataset import chexpert_ds_creator
 
-from models import classification_model, CombinedActivations, get_encoder,CombinedModel
+from metrics import computeAUROC
+from models import classification_model, CombinedActivations, CombinedModel,get_encoder
 from losses import regularized_loss, fine_regularized_loss
 
 
@@ -39,11 +39,11 @@ class Trainer(object):
             settings=wandb.Settings(start_method="fork"),
             name=exp_name,
         )
-        t = transforms.Compose([transforms.ToTensor(),transforms.Resize(299),transforms.CenterCrop(256),transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-        train_ds = ImageFolder(root=os.path.join(self.images_dir,'train'),transform=t)
-        val_ds = ImageFolder(root=os.path.join(self.images_dir,'test'),transform=t)
-        self.train_loader = DataLoader(train_ds, batch_size=cfg.BATCH_SIZE, shuffle=True,drop_last=True)
-        self.val_loader = DataLoader(val_ds, batch_size=cfg.BATCH_SIZE, shuffle=False)
+        train_ds,val_ds = globals()[cfg.DS_CREATOR](cfg)
+
+        self.train_loader = DataLoader(train_ds, batch_size=cfg.BATCH_SIZE, shuffle=True,pin_memory=True)
+        self.val_loader = DataLoader(val_ds, batch_size=cfg.BATCH_SIZE, shuffle=False,pin_memory=True)
+
 
         if cfg.AVG:
             self.net = CombinedActivations(
@@ -79,8 +79,8 @@ class Trainer(object):
                 weights=cfg.ENCODER_WEIGHTS
             )
             self.trained_encoder.to(self.device)
-        weights = cfg.WEIGHTS
-        self.criterion = nn.CrossEntropyLoss(weight=torch.tensor(weights,device=self.device))
+
+        self.criterion = nn.BCEWithLogitsLoss()
 
         if cfg.SOFT_FREEZE:
             cfg.LR *= 10
@@ -124,22 +124,29 @@ class Trainer(object):
     def run_epoch(self,dl,train_or_val):
         bar = tqdm(enumerate(dl), total=len(dl))
         losses = []
-        accs = []
-
+        accs = 0
+        total = 0
+        if train_or_val != 'train':
+            all_labels = torch.FloatTensor().cuda()
+            all_outputs = torch.FloatTensor().cuda()
         for i, (inputs,labels) in bar:
             if train_or_val == 'train':
                 self.net.train()  # Set model to training mode
                 self.optimizer.zero_grad()
+
             else:
                 self.net.eval()
 
             inputs = inputs.to(self.device)
             labels = labels.to(self.device)
-            batch_size = inputs.size(0)
+            total += inputs.size(0)
 
 
             with torch.set_grad_enabled(train_or_val == 'train'):
                 outputs = self.net(inputs)
+                if train_or_val != 'train':
+                    all_outputs = torch.cat((all_outputs, outputs), 0)
+                    all_labels = torch.cat((all_labels, labels), 0)
                 _, preds = torch.max(outputs, 1)
 
                 loss = self.criterion(outputs, labels)
@@ -155,19 +162,23 @@ class Trainer(object):
 
             losses.append(loss.item())
 
-            accs.append(torch.sum(preds == labels.data).item() / batch_size)
+            # accs += torch.sum(preds == labels.data).item()
 
             if (i % 10 == 9 and train_or_val == 'train') or i == len(dl) -1:
-                bar.set_description(f'{train_or_val} loss: {np.mean(losses)} {train_or_val} accuracy: {np.mean(accs)} iter: {i}')
+                bar.set_description(f'{train_or_val} loss: {np.mean(losses)} {train_or_val} accuracy: {accs/total} iter: {i}')
                 logs = {
                     f'{train_or_val} loss': float(np.mean(losses)),
-                    f'{train_or_val} accuracy': float(np.mean(accs)),
+                    f'{train_or_val} accuracy': float(accs/total),
                 }
+                if train_or_val == 'train':
+                    logs['lr'] = float(self.scheduler.get_last_lr()[0])
+                else:
+                    logs['val mean auc'] = float(computeAUROC(all_labels,all_outputs,self.cfg.NUM_CLASSES))
                 wandb.log(logs,step=self.step)
 
         if train_or_val == 'train':
             self.scheduler.step()
-        return float(np.mean(accs))
+        return float(accs/total)
 
 
     def train(self):

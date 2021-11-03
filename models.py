@@ -4,6 +4,7 @@ from typing import List
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
+from segmentation_models_pytorch.base import ClassificationHead
 from segmentation_models_pytorch.encoders.densenet import densenet_encoders
 
 import numpy as np
@@ -31,31 +32,6 @@ def get_encoder(name, in_channels=3, depth=5, weights=None):
     encoder.set_in_channels(in_channels)
 
     return encoder
-
-class ClassificationHead(nn.Sequential):
-
-    def __init__(self, num_ftrs, out_channels):
-        super().__init__()
-        self.linear = nn.Linear(num_ftrs, out_channels)
-        self.num_ftrs = num_ftrs
-        self.sigmoid = nn.Sigmoid()
-
-        self.classifier = nn.Sequential(
-            nn.Linear(num_ftrs, 128), # out_channels
-            nn.ReLU(inplace=True),
-            nn.BatchNorm1d(128),
-            nn.Linear(128, out_channels)
-        )
-
-    def forward(self, *features):
-        x = features[-1]
-        x = F.relu(x, inplace=True)
-        x = F.adaptive_avg_pool2d(x, (6, 6))
-        x = torch.flatten(x, 1)
-        # x = x.view(-1, self.num_ftrs)
-        x = self.classifier(x)
-
-        return x
 
 class ClassificationModel(torch.nn.Module):
     def initialize(self):
@@ -104,15 +80,15 @@ class classification_model(ClassificationModel):
 
         # encoder
         self.encoder = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
-                                        weights=encoder_weights)
-        #ToDo: change num_features to the exact num
-        self.classification_head = ClassificationHead(num_ftrs=1024*6*6,
-                                                      out_channels=classes)
+                                   weights=encoder_weights)
+
+        self.classification_head = ClassificationHead(in_channels=1024,
+                                                      classes=classes)
         self.name = 'u-{}'.format(encoder_name)
 
     def forward(self, x):
         features = self.encoder(x)
-        output = self.classification_head(*features)
+        output = self.classification_head(features[-1])
         return output
 
 
@@ -129,9 +105,9 @@ class CombinedModel(ClassificationModel):
         self.cfg = cfg
         # encoder
         self.encoder_base = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
-                                             weights=encoder_weights)
-        self.encoder = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
                                         weights=encoder_weights)
+        self.encoder = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
+                                   weights=encoder_weights)
         self.encoder_name = encoder_name
         self.in_channels = in_channels
         self.encoder_depth = encoder_depth
@@ -169,7 +145,7 @@ class CombinedModel(ClassificationModel):
 
 
     def forward(self, x):
-        empty_encoder = self.get_encoder(self.encoder_name, in_channels=self.in_channels, depth=self.encoder_depth)
+        empty_encoder = get_encoder(self.encoder_name, in_channels=self.in_channels, depth=self.encoder_depth)
         empty_encoder.to(self.device)
         new_state_dict = empty_encoder.state_dict()
         for block, middle in zip(self.blocks,self.middle_layer):
@@ -211,11 +187,11 @@ class CombinedActivations(ClassificationModel):
         self.cfg = cfg
         # encoder
         self.encoder_base = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
-                                             weights=encoder_weights)
+                                        weights=encoder_weights)
         if cfg.ONLY_MIDDLE:
             encoder_weights = cfg.BEST_MODEL_PATH
         self.encoder = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
-                                        weights=encoder_weights)
+                                   weights=encoder_weights)
 
         #ToDo: change num_features to the exact num
         self.classification_head = ClassificationHead(num_ftrs=1024*6*6,
