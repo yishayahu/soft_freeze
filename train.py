@@ -127,8 +127,8 @@ class Trainer(object):
         accs = 0
         total = 0
         if train_or_val != 'train':
-            all_labels = torch.FloatTensor().cuda()
-            all_outputs = torch.FloatTensor().cuda()
+            all_labels = torch.FloatTensor().to(self.device)
+            all_outputs = torch.FloatTensor().to(self.device)
         for i, (inputs,labels) in bar:
             if train_or_val == 'train':
                 self.net.train()  # Set model to training mode

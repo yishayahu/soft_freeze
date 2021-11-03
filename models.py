@@ -41,7 +41,7 @@ class ClassificationModel(torch.nn.Module):
         """Sequentially pass `x` trough model`s encoder, decoder and heads"""
         features = self.encoder(x)
 
-        labels = self.classification_head(*features)
+        labels = self.classification_head(features[-1])
 
         return labels
 
@@ -113,8 +113,8 @@ class CombinedModel(ClassificationModel):
         self.encoder_depth = encoder_depth
         self.device = device
         #ToDo: change num_features to the exact num
-        self.classification_head = ClassificationHead(num_ftrs=1024*6*6,
-                                                      out_channels=classes)
+        self.classification_head = ClassificationHead(in_channels=1024,
+                                                      classes=classes)
 
         if cfg.LAYER_WISE:
             self.blocks = []
@@ -157,7 +157,7 @@ class CombinedModel(ClassificationModel):
             p.requires_grad = False
             p.copy_(new_state_dict[name])
         features = empty_encoder(x)
-        output = self.classification_head(*features)
+        output = self.classification_head(features[-1])
         return output
     def parameters_to_grad(self):
         return [{'params':list((self.encoder.parameters())),'lr':self.cfg.LR},{'params':self.middle_layer,'lr':self.cfg.LR_FOR_MIDDLE_LAYER}]
@@ -194,8 +194,8 @@ class CombinedActivations(ClassificationModel):
                                    weights=encoder_weights)
 
         #ToDo: change num_features to the exact num
-        self.classification_head = ClassificationHead(num_ftrs=1024*6*6,
-                                                      out_channels=classes)
+        self.classification_head = ClassificationHead(in_channels=1024,
+                                                      classes=classes)
         self.middle_layer = []
         self.middle_layer_index = [0]
         if cfg.LAYER_WISE:
@@ -245,7 +245,7 @@ class CombinedActivations(ClassificationModel):
                 else:
                     x = x1 * (1-w1) + x2 * w1
                     features.append(x)
-        output = self.classification_head(*features)
+        output = self.classification_head(features[-1])
         return output
     def parameters_to_grad(self):
         return [{'params':list((self.encoder.parameters())),'lr':self.cfg.LR},{'params':self.middle_layer,'lr':self.cfg.LR_FOR_MIDDLE_LAYER}]
