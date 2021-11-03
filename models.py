@@ -152,7 +152,7 @@ class CombinedModel(ClassificationModel):
         output = self.classification_head(features[-1])
         return output
     def parameters_to_grad(self):
-        return [{'params':list((self.encoder.parameters())),'lr':self.cfg.LR},{'params':self.middle_layer,'lr':self.cfg.LR_FOR_MIDDLE_LAYER}]
+        return [{'params':list((self.encoder.parameters()))+ list(self.classification_head.parameters()),'lr':self.cfg.LR},{'params':self.middle_layer,'lr':self.cfg.LR_FOR_MIDDLE_LAYER}]
 
 
 def store_model_activations(store_list):
@@ -243,7 +243,7 @@ class CombinedActivations(ClassificationModel):
         output = self.classification_head(features[-1])
         return output
     def parameters_to_grad(self):
-        return [{'params':list((self.encoder.parameters())),'lr':self.cfg.LR},{'params':self.middle_layer,'lr':self.cfg.LR_FOR_MIDDLE_LAYER}]
+        return [{'params':list((self.encoder.parameters()))+ list(self.classification_head.parameters()),'lr':self.cfg.LR},{'params':self.middle_layer,'lr':self.cfg.LR_FOR_MIDDLE_LAYER}]
 
 
 class ConcatModel(ClassificationModel):
@@ -290,7 +290,7 @@ class ConcatModel(ClassificationModel):
         output = self.classification_head(features[-1])
         return output
     def parameters_to_grad(self):
-        return [{'params':list((self.encoder.parameters())),'lr':self.cfg.LR}]
+        return [{'params':list((self.encoder.parameters()))+ list(self.classification_head.parameters()),'lr':self.cfg.LR}]
 
 
 
