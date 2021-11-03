@@ -211,14 +211,16 @@ class CombinedActivations(ClassificationModel):
 
         else:
             counter = 5
-        for i in range(counter):
 
-            loc = 0
-            if not cfg.LAYER_WISE:
-                loc = (i-5)/2
-            w = torch.nn.Parameter(torch.tensor(np.random.normal(loc)))
-            self.register_parameter(name=f'w{i}', param=w)
-            self.middle_layer.append(w)
+        for i in range(counter):
+            if self.cfg.LEARN_AVG:
+                loc = 0
+                if not cfg.LAYER_WISE:
+                    loc = (i-5)/2
+                w = torch.nn.Parameter(torch.tensor(np.random.normal(loc)))
+                self.register_parameter(name=f'w{i}', param=w)
+                self.middle_layer.append(w)
+
 
 
     def forward(self, x):
@@ -236,7 +238,10 @@ class CombinedActivations(ClassificationModel):
                     continue
                 x1 = base_enc_stages[i](x)
                 x2 = enc_stages[i](x)
-                w1 = torch.sigmoid(self.middle_layer[i-1])
+                if self.cfg.LEARN_AVG:
+                    w1 = torch.sigmoid(self.middle_layer[i-1])
+                else:
+                    w1 = 0.5
                 if isinstance(x1, (list, tuple)):
                     x1, skip1 = x1
                     x2, skip2 = x2
