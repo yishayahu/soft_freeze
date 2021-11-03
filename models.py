@@ -6,30 +6,25 @@ import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 from segmentation_models_pytorch.base import ClassificationHead
 from segmentation_models_pytorch.encoders.densenet import densenet_encoders
-
+from densenet import DenseNet
 import numpy as np
-encoders = {}
-encoders.update(densenet_encoders)
 
-def get_encoder(name, in_channels=3, depth=5, weights=None):
-    Encoder = encoders[name]["encoder"]
-    params = encoders[name]["params"]
-    params.update(depth=depth)
-    encoder = Encoder(**params)
+
+def get_encoder(in_channels=3, weights=None):
+
+    encoder = DenseNet()
 
     if weights is not None:
         if not os.path.exists(weights):
-            settings = encoders[name]["pretrained_settings"][weights]
-            encoder.load_state_dict(model_zoo.load_url(settings["url"]))
+            assert False
+
         else:
             state_dict = torch.load(weights, map_location='cpu')
             if 'encoder' in state_dict:
                 state_dict = state_dict['encoder']
-            state_dict["classifier.bias"] = []
-            state_dict["classifier.weight"] = []
+            del encoder.classifier
             encoder.load_state_dict(state_dict)
 
-    encoder.set_in_channels(in_channels)
 
     return encoder
 
@@ -79,8 +74,7 @@ class classification_model(ClassificationModel):
         super(classification_model, self).__init__()
 
         # encoder
-        self.encoder = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
-                                   weights=encoder_weights)
+        self.encoder = get_encoder(in_channels=in_channels, weights=encoder_weights)
 
         self.classification_head = ClassificationHead(in_channels=1024,
                                                       classes=classes)
@@ -104,10 +98,8 @@ class CombinedModel(ClassificationModel):
         super(CombinedModel, self).__init__()
         self.cfg = cfg
         # encoder
-        self.encoder_base = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
-                                        weights=encoder_weights)
-        self.encoder = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
-                                   weights=encoder_weights)
+        self.encoder_base = get_encoder(in_channels=in_channels, weights=encoder_weights)
+        self.encoder = get_encoder(in_channels=in_channels,weights=encoder_weights)
         self.encoder_name = encoder_name
         self.in_channels = in_channels
         self.encoder_depth = encoder_depth
@@ -145,7 +137,7 @@ class CombinedModel(ClassificationModel):
 
 
     def forward(self, x):
-        empty_encoder = get_encoder(self.encoder_name, in_channels=self.in_channels, depth=self.encoder_depth)
+        empty_encoder = get_encoder(in_channels=self.in_channels)
         empty_encoder.to(self.device)
         new_state_dict = empty_encoder.state_dict()
         for block, middle in zip(self.blocks,self.middle_layer):
@@ -186,12 +178,10 @@ class CombinedActivations(ClassificationModel):
         super(CombinedActivations, self).__init__()
         self.cfg = cfg
         # encoder
-        self.encoder_base = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
-                                        weights=encoder_weights)
+        self.encoder_base = get_encoder(in_channels=in_channels,weights=encoder_weights)
         if cfg.ONLY_MIDDLE:
             encoder_weights = cfg.BEST_MODEL_PATH
-        self.encoder = get_encoder(encoder_name, in_channels=in_channels, depth=encoder_depth,
-                                   weights=encoder_weights)
+        self.encoder = get_encoder(in_channels=in_channels, weights=encoder_weights)
 
         #ToDo: change num_features to the exact num
         self.classification_head = ClassificationHead(in_channels=1024,
@@ -255,6 +245,52 @@ class CombinedActivations(ClassificationModel):
     def parameters_to_grad(self):
         return [{'params':list((self.encoder.parameters())),'lr':self.cfg.LR},{'params':self.middle_layer,'lr':self.cfg.LR_FOR_MIDDLE_LAYER}]
 
+
+class ConcatModel(ClassificationModel):
+    def __init__(self,
+                 encoder_name: str = "resnet34",
+                 encoder_depth: int = 5,
+                 encoder_weights: str = "imagenet",
+                 in_channels: int = 3,
+                 classes: int = 1,cfg=None):
+        super(ConcatModel, self).__init__()
+
+        # encoder
+        self.cfg = cfg
+        # encoder
+        self.encoder_base = get_encoder(in_channels=in_channels, weights=encoder_weights)
+
+
+        self.encoder = DenseNet(double_for_concat=True)
+
+        self.classification_head = ClassificationHead(in_channels=2560,
+                                                      classes=classes)
+        self.name = 'u-{}'.format(encoder_name)
+
+    def forward(self, x):
+        enc_stages = self.encoder.get_stages()
+        base_enc_stages = self.encoder_base.get_stages()
+        features = []
+        base_encoder_out = x
+        encoder_out = x
+        for i in range(len(enc_stages)):
+            if i == 0:
+                continue
+            base_encoder_out = base_enc_stages[i](base_encoder_out)
+            encoder_out = enc_stages[i](encoder_out)
+            if isinstance(base_encoder_out, (list, tuple)):
+                base_encoder_out, _ = base_encoder_out
+                encoder_out, _ = encoder_out
+
+                encoder_out = torch.cat([base_encoder_out,encoder_out],dim=1)
+            else:
+                encoder_out = torch.cat([base_encoder_out,encoder_out],dim=1)
+                features.append(encoder_out)
+
+        output = self.classification_head(features[-1])
+        return output
+    def parameters_to_grad(self):
+        return [{'params':list((self.encoder.parameters())),'lr':self.cfg.LR}]
 
 
 

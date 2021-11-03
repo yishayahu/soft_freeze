@@ -11,7 +11,7 @@ from tqdm import tqdm
 from CheXpert.dataset import chexpert_ds_creator
 
 from metrics import computeAUROC
-from models import classification_model, CombinedActivations, CombinedModel,get_encoder
+from models import classification_model, CombinedActivations, CombinedModel, get_encoder, ConcatModel
 from losses import regularized_loss, fine_regularized_loss
 
 
@@ -61,6 +61,12 @@ class Trainer(object):
                 in_channels=cfg.N_CHANNELS,
                 classes=cfg.NUM_CLASSES,cfg=cfg,device=self.device
             )
+        elif cfg.CONCAT:
+            self.net = ConcatModel(encoder_name=cfg.ENCODER_NAME,
+                                   encoder_depth=cfg.ENCODER_DEPTH,
+                                   encoder_weights=cfg.ENCODER_WEIGHTS,
+                                   in_channels=cfg.N_CHANNELS,
+                                   classes=cfg.NUM_CLASSES,cfg=cfg)
         else:
             self.net = classification_model(
                 encoder_name=cfg.ENCODER_NAME,
@@ -73,9 +79,7 @@ class Trainer(object):
         self.trained_encoder = None
         if cfg.USE_REGULARIZED_LOSS:
             self.trained_encoder = get_encoder(
-                name=cfg.ENCODER_NAME,
                 in_channels=cfg.N_CHANNELS,
-                depth=cfg.ENCODER_DEPTH,
                 weights=cfg.ENCODER_WEIGHTS
             )
             self.trained_encoder.to(self.device)
@@ -111,7 +115,7 @@ class Trainer(object):
                            {'params':blk3,'lr':cfg.LR},{'params':blk2,'lr':cfg.LR / 10},
                            {'params':blk1,'lr':cfg.LR/100},{'params':base_blk,'lr':cfg.LR / 1000}]
             self.optimizer = torch.optim.Adam(params_list)
-        elif cfg.AVG:
+        elif cfg.AVG or cfg.AVG_PARAMS or cfg.CONCAT:
             self.optimizer = torch.optim.Adam(self.net.parameters_to_grad(), lr=cfg.LR)
         else:
             self.optimizer = torch.optim.Adam(self.net.parameters(), lr=cfg.LR)

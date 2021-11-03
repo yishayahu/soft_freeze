@@ -18,6 +18,7 @@ DS_CREATOR: "chexpert_ds_creator"
 
 AVG: False
 AVG_PARAMS: False
+CONCAT: False
 SOFT_FREEZE: False
 USE_REGULARIZED_LOSS: False
 FINE_REGULARIZED_LOSS: False
