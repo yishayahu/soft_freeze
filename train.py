@@ -41,8 +41,8 @@ class Trainer(object):
         )
         train_ds,val_ds = globals()[cfg.DS_CREATOR](cfg)
 
-        self.train_loader = DataLoader(train_ds, batch_size=cfg.BATCH_SIZE, shuffle=True,pin_memory=True)
-        self.val_loader = DataLoader(val_ds, batch_size=cfg.BATCH_SIZE, shuffle=False,pin_memory=True)
+        self.train_loader = DataLoader(train_ds, batch_size=cfg.BATCH_SIZE, shuffle=True,pin_memory=True,num_workers=1)
+        self.val_loader = DataLoader(val_ds, batch_size=cfg.BATCH_SIZE, shuffle=False,pin_memory=True,num_workers=1)
 
 
         if cfg.AVG:
