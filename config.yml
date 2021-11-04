@@ -15,7 +15,7 @@ LR_DECAY_STEP_SIZE: 1
 GAMMA_DECAY: 0.6
 DS_CREATOR: "chexpert_ds_creator"
 
-
+FRONT_OR_LAT: "FRONT"
 AVG: False
 AVG_PARAMS: False
 CONCAT: False

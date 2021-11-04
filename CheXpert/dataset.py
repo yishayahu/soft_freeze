@@ -86,4 +86,6 @@ def chexpert_ds_creator(cfg,policy='diff'):
     datasetTest_frt = CheXpertDataSet('/home/dsi/shaya/chexpert_v1_small/',pathFileTest_frt, cfg.NUM_CLASSES, policy, transformSequence)
     datasetTest_lat = CheXpertDataSet('/home/dsi/shaya/chexpert_v1_small/',pathFileTest_lat, cfg.NUM_CLASSES, policy, transformSequence)
     datasetTest_agg = CheXpertDataSet('/home/dsi/shaya/chexpert_v1_small/',pathFileTest_agg, cfg.NUM_CLASSES, policy, transformSequence)
+    if cfg.FRONT_OR_LAT =="FRONT":
+        return datasetTrain_frt,datasetValid_frt
     return datasetTrain_lat,datasetValid_lat

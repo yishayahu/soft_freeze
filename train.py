@@ -34,7 +34,7 @@ class Trainer(object):
         shutil.copyfile('config.yml',os.path.join(self.ckpt_dir,'config.yml'))
 
         wandb.init(
-            project="ct",
+            project=f"ct_{cfg.FRONT_OR_LAT}",
             id=wandb.util.generate_id(),
             settings=wandb.Settings(start_method="fork"),
             name=exp_name,
