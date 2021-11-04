@@ -1,6 +1,7 @@
 import csv
 import os
 
+import PIL
 import numpy as np
 import torch
 from PIL import Image
@@ -56,7 +57,16 @@ class CheXpertDataSet(Dataset):
     def __getitem__(self, index):
         '''Take the index of item and returns the image and its labels'''
         image_name = self.image_names[index]
-        image = Image.open(image_name).convert('RGB')
+        for i in range(3):
+            try:
+                image = Image.open(image_name).convert('RGB')
+            except PIL.UnidentifiedImageError:
+                if i == 2:
+                    raise Exception(f'image cannot be loaded {image_name}')
+                continue
+            break
+
+
         label = self.labels[index]
         if self.transform is not None:
             image = self.transform(image)
